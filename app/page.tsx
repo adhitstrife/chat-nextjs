@@ -73,16 +73,13 @@ export default function Home() {
     const body = form.message.value;
     form.message.value = "";
 
-    const response = await fetch(
-      "https://ruby-realtime-chat.onrender.com/messages",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ body }),
-      }
-    );
+    await fetch("https://ruby-realtime-chat.onrender.com/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ body }),
+    });
   };
   return (
     <div className="border p-6 w-full max-w-md mx-auto shadow-lg bg-white h-full sm:h-auto sm:rounded-lg mt-5">
