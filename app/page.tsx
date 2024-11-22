@@ -1,95 +1,145 @@
+"use client";
 import Image from "next/image";
 import styles from "./page.module.css";
+import Chat from "./components/chat";
+import { useEffect, useRef, useState } from "react";
+import { channel } from "diagnostics_channel";
 
+interface message {
+  id: number;
+  body: string;
+}
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [messages, setMessages] = useState<message[]>([]);
+  const [guid, setguid] = useState("");
+  const messageContainerRef = useRef<HTMLDivElement>(null);
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  useEffect(() => {
+    fetchMessages();
+
+    const ws = new WebSocket("wss://ruby-realtime-chat.onrender.com/cable");
+    console.log(ws);
+    ws.onopen = () => {
+      console.log("connected to web server");
+      setguid(Math.random().toString(36).substring(2, 15));
+
+      ws.send(
+        JSON.stringify({
+          command: "subscribe",
+          identifier: JSON.stringify({
+            id: guid,
+            channel: "MessagesChannel",
+          }),
+        })
+      );
+
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (
+          data.type === "ping" ||
+          data.type === "welcome" ||
+          data.type === "confirm_subscription"
+        )
+          return;
+
+        const newMessage = data.message;
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages, newMessage];
+
+          // Scroll to the bottom after updating messages
+          if (messageContainerRef.current) {
+            messageContainerRef.current.scrollTop =
+              messageContainerRef.current.scrollHeight;
+          }
+
+          return updatedMessages;
+        });
+      };
+    };
+  }, []);
+
+  const fetchMessages = async () => {
+    const response = await fetch(
+      "https://ruby-realtime-chat.onrender.com/messages"
+    );
+    const data = await response.json();
+    setMessages(data);
+    if (messageContainerRef.current) {
+      messageContainerRef.current.scrollTop =
+        messageContainerRef.current.scrollHeight;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const form = e.currentTarget;
+    const body = form.message.value;
+    form.message.value = "";
+
+    const response = await fetch(
+      "https://ruby-realtime-chat.onrender.com/messages",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ body }),
+      }
+    );
+  };
+  return (
+    <div className="border p-6 w-full max-w-md mx-auto shadow-lg bg-white h-full sm:h-auto sm:rounded-lg mt-5">
+      <div className="messageHeader text-center">
+        <span className="text-2xl font-bold text-gray-800">Chat Messages</span>
+        <p className="text-gray-500 text-sm mt-1">Guid: {guid}</p>
+      </div>
+
+      <div
+        className="messages mt-6 overflow-y-auto max-h-64 p-4 border rounded-lg bg-gray-50 flex flex-col gap-3"
+        id="messages"
+      >
+        {messages.map((message) => (
+          <div className="message" key={message.id}>
+            <div className="bg-blue-500 text-white inline-block px-3 py-2 rounded-lg shadow-md">
+              <p className="text-sm">{message.body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="messageForm mt-4">
+        <form
+          onSubmit={handleSubmit}
+          className="flex items-center gap-2 bg-white border-t pt-3"
+        >
+          <input
+            type="text"
+            name="message"
+            className="flex-grow border border-gray-300 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring focus:ring-blue-300 text-sm"
+            placeholder="Write your message here..."
+          />
+          <button
+            type="submit"
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300"
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="1.5"
+              stroke="currentColor"
+              className="w-5 h-5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+              />
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
