@@ -1,9 +1,5 @@
 "use client";
-import Image from "next/image";
-import styles from "./page.module.css";
-import Chat from "./components/chat";
 import { useEffect, useRef, useState } from "react";
-import { channel } from "diagnostics_channel";
 
 interface message {
   id: number;
